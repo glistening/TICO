@@ -2,12 +2,17 @@
 prompt = "Lily picked up a flower."
 model_name = "Maykeye/TinyLLama-v0"
 
+import torch
+
 # Capturer
 captured_inputs = {}
 
-import inspect, copy ,types
+import copy, inspect, types
+
 from transformers import LlamaForCausalLM
+
 original_forward = LlamaForCausalLM.forward
+
 
 def patched_forward(self, *args, **kwargs):
     global captured_inputs
@@ -18,7 +23,9 @@ def patched_forward(self, *args, **kwargs):
     args_names = [
         # signature includes `self`` and `kwargs``.
         # Just retrieve the ordinary positional inputs only
-        name for name in sig.parameters.keys() if name not in ("self", "kwargs")
+        name
+        for name in sig.parameters.keys()
+        if name not in ("self", "kwargs")
     ]
 
     args_dict = dict(zip(args_names, args))
@@ -47,6 +54,7 @@ def patched_forward(self, *args, **kwargs):
 
 # Tokenizer
 from transformers import AutoTokenizer
+
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.pad_token = tokenizer.eos_token
 tokenizer.padding_side = "right"
@@ -58,9 +66,10 @@ inputs = tokenizer(
     truncation=True,
 )
 
+
 # Generator
 from transformers import AutoModelForCausalLM
-import torch
+
 model = AutoModelForCausalLM.from_pretrained(model_name)
 model.eval()
 model.forward = types.MethodType(patched_forward, model)
@@ -69,13 +78,14 @@ with torch.no_grad():
         **inputs,
         max_new_tokens=32,
         do_sample=False,
-        pad_token_id=tokenizer.eos_token_id
+        pad_token_id=tokenizer.eos_token_id,
     )
 generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
 print(generated_text)
 
 # Tico
 import tico
+
 for key in captured_inputs.keys():
     model = AutoModelForCausalLM.from_pretrained(model_name)
     model.eval()
