@@ -5,7 +5,7 @@ model_name = "Maykeye/TinyLLama-v0"
 import torch
 
 # Capturer
-captured_inputs = {}
+captured_inputs = {}  # type: ignore[var-annotated]
 
 import copy, inspect, types
 
