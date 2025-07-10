@@ -39,7 +39,7 @@ def patched_forward(self, *args, **kwargs):
         ]
         captured_inputs["prefill"] = populate_args(args_dict, input_to_remove)
     elif captured_inputs.get("decode", None) == None:
-        input_to_remove = [ "use_cache" ]
+        input_to_remove = ["use_cache"]
         captured_inputs["decode"] = populate_args(args_dict, input_to_remove)
 
     return original_forward(self, *args, **kwargs)
@@ -80,4 +80,4 @@ for key in captured_inputs.keys():
     model = AutoModelForCausalLM.from_pretrained(model_name)
     model.eval()
     circle_model = tico.convert(model, captured_inputs[key])
-    circle_model.save(f'{key}.circle')
+    circle_model.save(f"{key}.circle")
