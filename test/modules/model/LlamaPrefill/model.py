@@ -2,24 +2,21 @@
 prompt = "Lily picked up a flower."
 model_name = "Maykeye/TinyLLama-v0"
 
-import torch
-
-# Capturer
-captured_inputs = {}  # type: ignore[var-annotated]
+captured_input = None  # type: ignore[var-annotated]
 
 import copy, inspect, types
 
 from transformers import LlamaForCausalLM
 
-original_forward = LlamaForCausalLM.forward
+forward_old = LlamaForCausalLM.forward
 
 
-def patched_forward(self, *args, **kwargs):
-    global captured_inputs
+def capture_and_forward(self, *args, **kwargs):
+    global captured_input
 
     # Prepare args tuple for TICO.convert()
     # Get arg_names in positional args order using inspect
-    sig = inspect.signature(original_forward)
+    sig = inspect.signature(forward_old)
     args_names = [
         # signature includes `self`` and `kwargs``.
         # Just retrieve the ordinary positional inputs only
@@ -37,19 +34,16 @@ def patched_forward(self, *args, **kwargs):
         args_tuple = tuple(args_dict.get(name, None) for name in args_names)
         return copy.deepcopy(args_tuple)
 
-    if captured_inputs.get("prefill", None) == None:
+    if len(args_dict["past_key_values"].key_cache) == 0:
         input_to_remove = [
             "past_key_values",
             "use_cache",
             "attention_mask",
             "cache_position",
         ]
-        captured_inputs["prefill"] = populate_args(args_dict, input_to_remove)
-    elif captured_inputs.get("decode", None) == None:
-        input_to_remove = ["use_cache"]
-        captured_inputs["decode"] = populate_args(args_dict, input_to_remove)
+        captured_input = populate_args(args_dict, input_to_remove)
 
-    return original_forward(self, *args, **kwargs)
+    return forward_old(self, *args, **kwargs)
 
 
 # Tokenizer
@@ -68,11 +62,13 @@ inputs = tokenizer(
 
 
 # Generator
+import torch
+
 from transformers import AutoModelForCausalLM
 
 model = AutoModelForCausalLM.from_pretrained(model_name)
 model.eval()
-model.forward = types.MethodType(patched_forward, model)
+model.forward = types.MethodType(capture_and_forward, model)
 with torch.no_grad():
     outputs = model.generate(
         **inputs,
@@ -86,8 +82,7 @@ print(generated_text)
 # Tico
 import tico
 
-for key in captured_inputs.keys():
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    model.eval()
-    circle_model = tico.convert(model, captured_inputs[key])
-    circle_model.save(f"{key}.circle")
+model = AutoModelForCausalLM.from_pretrained(model_name)
+model.eval()
+circle_model = tico.convert(model, captured_input)
+circle_model.save(f"llama.prefill.circle")
