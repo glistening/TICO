@@ -2,7 +2,7 @@
 prompt = "Lily picked up a flower."
 model_name = "Maykeye/TinyLLama-v0"
 
-captured_input = None  # type: ignore[var-annotated]
+captured_input = ()
 
 import copy, inspect, types
 
@@ -20,7 +20,9 @@ def capture_and_forward(self, *args, **kwargs):
     args_names = [
         # signature includes `self`` and `kwargs``.
         # Just retrieve the ordinary positional inputs only
-        name for name in sig.parameters.keys() if name not in ("self", "kwargs")
+        name
+        for name in sig.parameters.keys()
+        if name not in ("self", "kwargs")
     ]
 
     args_dict = dict(zip(args_names, args))
@@ -32,8 +34,8 @@ def capture_and_forward(self, *args, **kwargs):
         args_tuple = tuple(args_dict.get(name, None) for name in args_names)
         return copy.deepcopy(args_tuple)
 
-    if len(args_dict['past_key_value'].key_cache) != 0:
-        input_to_remove = [ "use_cache" ]
+    if len(args_dict["past_key_value"].key_cache) != 0:
+        input_to_remove = ["use_cache"]
         captured_input = populate_args(args_dict, input_to_remove)
 
     return forward_old(self, *args, **kwargs)
@@ -61,7 +63,9 @@ from transformers import AutoModelForCausalLM
 
 model = AutoModelForCausalLM.from_pretrained(model_name)
 model.eval()
-model.model.layers[0].forward = types.MethodType(capture_and_forward, model.model.layers[0])
+model.model.layers[0].forward = types.MethodType(
+    capture_and_forward, model.model.layers[0]
+)
 with torch.no_grad():
     outputs = model.generate(
         **inputs,
