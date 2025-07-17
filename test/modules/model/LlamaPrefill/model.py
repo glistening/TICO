@@ -34,7 +34,7 @@ def capture_and_forward(self, *args, **kwargs):
         args_tuple = tuple(args_dict.get(name, None) for name in args_names)
         return copy.deepcopy(args_tuple)
 
-    if len(args_dict["past_key_values"].key_cache) == 0:
+    if args_dict["past_key_values"].get_seq_length() == 0:
         input_to_remove = [
             "past_key_values",
             "use_cache",
