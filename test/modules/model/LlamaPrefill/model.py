@@ -2,13 +2,13 @@
 prompt = "Lily picked up a flower."
 model_name = "Maykeye/TinyLLama-v0"
 
-captured_input = None  # type: ignore[var-annotated]
+captured_input = ()
 
 import copy, inspect, types
 
 from transformers import LlamaForCausalLM
 
-forward_old = LlamaForCausalLM.forward
+forward_org = LlamaForCausalLM.forward
 
 
 def capture_and_forward(self, *args, **kwargs):
@@ -16,7 +16,7 @@ def capture_and_forward(self, *args, **kwargs):
 
     # Prepare args tuple for TICO.convert()
     # Get arg_names in positional args order using inspect
-    sig = inspect.signature(forward_old)
+    sig = inspect.signature(forward_org)
     args_names = [
         # signature includes `self`` and `kwargs``.
         # Just retrieve the ordinary positional inputs only
@@ -43,7 +43,7 @@ def capture_and_forward(self, *args, **kwargs):
         ]
         captured_input = populate_args(args_dict, input_to_remove)
 
-    return forward_old(self, *args, **kwargs)
+    return forward_org(self, *args, **kwargs)
 
 
 # Tokenizer
