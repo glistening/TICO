@@ -69,6 +69,7 @@ from tico.passes.remove_redundant_permute import passes as RemoveRedundantPermut
 from tico.passes.remove_redundant_reshape import passes as RemoveRedundantViewPasses
 from tico.passes.remove_redundant_slice import RemoveRedundantSlice
 from tico.passes.remove_redundant_to_copy import RemoveRedundantToCopy
+from tico.passes.remove_unused_inputs import RemoveUnusedInput
 from tico.passes.restore_linear import RestoreLinear
 from tico.passes.segment_index_select import SegmentIndexSelectConst
 from tico.serialize.circle_serializer import build_circle
@@ -251,6 +252,7 @@ def convert_exported_module_to_circle(
             ConvertConv1dToConv2d(),
             *LowerToSlicePasses(),
             FuseLeadingUnsqueezeReshape(),
+            RemoveUnusedInput(),
         ]
     )
     circle_legalize.run(exported_program)
