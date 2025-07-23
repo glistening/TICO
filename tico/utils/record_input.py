@@ -23,7 +23,9 @@ import torch.nn as nn
 
 class RecordingInput:
     def __init__(
-        self, module: nn.Module, condition: Optional[Callable[[dict], bool]] = None
+        self,
+        module: nn.Module,
+        condition: Optional[Callable[[dict], bool]] = lambda args_dict: True,
     ):
         self.module = module
         self.forward_org = module.forward
@@ -47,13 +49,9 @@ class RecordingInput:
                 )
                 return copy.deepcopy(args_tuple)
 
-            # Use injected condition if provided
-            should_capture = (
-                self.condition(args_dict) if self.condition is not None else False
-            )
-
-            if should_capture and self.captured_input == ():
-                input_to_remove = ["use_cache"]
+            if self.condition(args_dict) and self.captured_input == ():
+                # input_to_remove = ["use_cache"]
+                input_to_remove = []
                 self.captured_input = populate_args(args_dict, input_to_remove)
 
             return self.forward_org(*args, **kwargs)
