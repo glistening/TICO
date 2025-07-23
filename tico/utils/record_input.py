@@ -25,7 +25,7 @@ class RecordingInput:
     def __init__(
         self,
         module: nn.Module,
-        condition: Optional[Callable[[dict], bool]] = lambda args_dict: True,
+        condition: Callable[[dict], bool] = lambda args_dict: True,
         *,
         input_to_remove: Optional[List[str]] = [],
     ):
