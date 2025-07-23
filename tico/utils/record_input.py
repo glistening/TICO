@@ -16,7 +16,7 @@ import copy
 
 import inspect
 from contextlib import contextmanager
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 import torch.nn as nn
 
@@ -26,10 +26,13 @@ class RecordingInput:
         self,
         module: nn.Module,
         condition: Optional[Callable[[dict], bool]] = lambda args_dict: True,
+        *,
+        input_to_remove: Optional[List[str]] = [],
     ):
         self.module = module
         self.forward_org = module.forward
         self.condition = condition
+        self.input_to_remove = input_to_remove
         sig = inspect.signature(self.forward_org)
         self.args_names = [
             name for name in sig.parameters.keys() if name not in ("self", "kwargs")
@@ -50,9 +53,7 @@ class RecordingInput:
                 return copy.deepcopy(args_tuple)
 
             if self.condition(args_dict) and self.captured_input == ():
-                # input_to_remove = ["use_cache"]
-                input_to_remove = []
-                self.captured_input = populate_args(args_dict, input_to_remove)
+                self.captured_input = populate_args(args_dict, self.input_to_remove)
 
             return self.forward_org(*args, **kwargs)
 
