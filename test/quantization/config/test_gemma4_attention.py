@@ -13,13 +13,16 @@
 # limitations under the License.
 
 import unittest
+from typing import Tuple
 
 from tico.quantization.config.gemma4_attention import (
+    AttentionLayout,
     DEFAULT_EXECUTION_PROFILE,
     Gemma4TextAttentionOptions,
     get_gemma4_text_attention_options,
     is_npu_export_text_attention_options,
     normalize_execution_profile,
+    RopeConvention,
 )
 from tico.quantization.config.ptq import PTQConfig
 
@@ -155,18 +158,32 @@ class TestGemma4TextAttentionOptionsResolver(unittest.TestCase):
         with self.assertRaises(ValueError):
             get_gemma4_text_attention_options(qcfg)
 
-    def test_npu_contract_requires_exact_unrolled_layout(self):
-        """Only the fully unrolled layout should satisfy the NPU contract."""
+    def test_npu_contract_requires_canonical_layout_and_rope(self):
+        """Only unrolled attention with pre-negated sine satisfies export."""
+        layouts: Tuple[AttentionLayout, ...] = ("batched", "unrolled")
+        ropes: Tuple[RopeConvention, ...] = ("hf", "pre_negated_sin")
+        for layout in layouts:
+            for rope in ropes:
+                with self.subTest(layout=layout, rope=rope):
+                    options = Gemma4TextAttentionOptions(layout=layout, rope=rope)
+                    self.assertEqual(
+                        is_npu_export_text_attention_options(options),
+                        layout == "unrolled" and rope == "pre_negated_sin",
+                    )
+
+        self.assertFalse(
+            is_npu_export_text_attention_options(Gemma4TextAttentionOptions())
+        )
         self.assertTrue(
             is_npu_export_text_attention_options(
-                Gemma4TextAttentionOptions(layout="unrolled")
+                get_gemma4_text_attention_options(PTQConfig())
             )
         )
-        self.assertFalse(
-            is_npu_export_text_attention_options(
-                Gemma4TextAttentionOptions(layout="batched")
-            )
+        explicit_hf = get_gemma4_text_attention_options(
+            PTQConfig(model_args={"profile": "npu_export", "attention": {"rope": "hf"}})
         )
+        self.assertEqual(explicit_hf.rope, "hf")
+        self.assertFalse(is_npu_export_text_attention_options(explicit_hf))
 
 
 if __name__ == "__main__":
